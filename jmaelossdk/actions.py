@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from .routine import MotionRoutine
-from .routines.basic import PUSH_UP
+from .routines.basic import PUSH_UP, STAND_UP
 from .routines.combat import KICK
 
 
 _ACTIONS: dict[str, MotionRoutine] = {
     KICK.name: KICK,
     PUSH_UP.name: PUSH_UP,
+    STAND_UP.name: STAND_UP,
 }
 
 

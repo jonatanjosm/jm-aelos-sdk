@@ -1,5 +1,5 @@
 from jmaelossdk.routine import MotionRoutine
-from jmaelossdk.routines.basic import PUSH_UP, push_up
+from jmaelossdk.routines.basic import PUSH_UP, STAND_UP, push_up, stand_up
 from jmaelossdk.routines.combat import KICK, kick
 
 
@@ -46,3 +46,20 @@ def test_push_up_routine_commands_match_migration() -> None:
 
 def test_push_up_function_returns_routine_without_robot() -> None:
     assert push_up() is PUSH_UP
+
+
+def test_stand_up_routine_commands_match_migration() -> None:
+    assert isinstance(STAND_UP, MotionRoutine)
+    assert STAND_UP.name == "Stand_up"
+    assert len(STAND_UP.commands) == 4
+    assert STAND_UP.commands == (
+        "MOTOrigid16(60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60)",
+        "MOTOsetspeed(30)",
+        "MOTOmove16(80, 30, 100, 100, 93, 55, 124, 100, 120, 170, 100, 100, 107, 145, 76, 100)",
+        "MOTOwait()",
+    )
+    assert STAND_UP.to_script().count("MOTOmove16") == 1
+
+
+def test_stand_up_function_returns_routine_without_robot() -> None:
+    assert stand_up() is STAND_UP

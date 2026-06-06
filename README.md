@@ -86,6 +86,9 @@ Routines are grouped by package under `jmaelossdk.routines`.
 - `Push-up`
   - Import: `from jmaelossdk.routines.basic import PUSH_UP, push_up`
   - Execute: `robot.action("Push-up")`
+- `Stand_up`
+  - Import: `from jmaelossdk.routines.basic import STAND_UP, stand_up`
+  - Execute: `robot.action("Stand_up")`
 
 ### Combat
 
