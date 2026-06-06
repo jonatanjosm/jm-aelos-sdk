@@ -1,22 +1,25 @@
 import jmaelossdk
 from jmaelossdk import AelosRobot
 from jmaelossdk.protocol import BasicSerialCommand
+from jmaelossdk.routine import MotionRoutine
 from jmaelossdk.routines.combat import KICK
 
 
 class FakeSerial:
     is_open = True
-    in_waiting = 0
 
     def __init__(self) -> None:
         self.writes: list[bytes] = []
         self.timeout = 1.0
+        self.read_calls = 0
+        self.in_waiting = 0
 
     def write(self, payload: bytes) -> int:
         self.writes.append(payload)
         return len(payload)
 
     def read(self, size: int = 1) -> bytes:
+        self.read_calls += 1
         return b""
 
     def close(self) -> None:
@@ -31,13 +34,15 @@ def test_init_returns_robot_without_auto_connect_when_disabled() -> None:
 
 
 def test_action_streams_named_routine_servo_moves() -> None:
-    robot = AelosRobot()
+    robot = AelosRobot(sleeper=lambda _: None)
     fake_serial = FakeSerial()
     robot._serial = fake_serial
 
     responses = robot.action("Kick")
 
-    assert len(responses) == 13
+    assert responses == [b""]
+    assert fake_serial.read_calls == 0
+    assert len(fake_serial.writes) == 13
     assert fake_serial.writes[0] == bytes(
         [
             BasicSerialCommand.SET_ALL_SERVOS,
@@ -93,3 +98,45 @@ def test_action_rejects_unknown_routine() -> None:
         assert "Unknown action" in str(exc)
     else:
         raise AssertionError("unknown action should fail")
+
+
+def test_run_routine_waits_after_move_until_motowait() -> None:
+    sleeps: list[float] = []
+    routine = MotionRoutine.from_commands(
+        name="Timing",
+        commands=[
+            "MOTOsetspeed(20)",
+            "MOTOmove16(80, 30, 100, 100, 100, 100, 100, 100, 120, 170, 100, 100, 100, 100, 100, 100)",
+            "MOTOwait()",
+            "MOTOmove16(80, 30, 100, 110, 100, 100, 100, 100, 120, 170, 100, 100, 100, 100, 100, 100)",
+            "MOTOwait()",
+            "DelayMs(200)",
+        ],
+    )
+    robot = AelosRobot(sleeper=sleeps.append)
+    robot._serial = FakeSerial()
+
+    robot.run_routine(routine, timing_scale=2.0, min_wait=0.05)
+
+    assert sleeps == [0.15, 0.175, 0.15, 0.1, 0.2, 1.0]
+
+
+def test_run_routine_reads_available_once_after_stream() -> None:
+    robot = AelosRobot(sleeper=lambda _: None)
+    fake_serial = FakeSerial()
+    fake_serial.in_waiting = 9
+    robot._serial = fake_serial
+
+    responses = robot.run_routine(KICK)
+
+    assert fake_serial.read_calls == 1
+    assert responses == [b""]
+
+
+def test_calculate_move_wait_respects_speed_and_bounds() -> None:
+    robot = AelosRobot()
+
+    assert robot.calculate_move_wait(10, distance=0) == 0.08
+    assert robot.calculate_move_wait(10, distance=10) == 0.08
+    assert robot.calculate_move_wait(10, distance=10, timing_scale=2.0) == 0.16
+    assert robot.calculate_move_wait(255, distance=10, min_wait=0.02) == 0.02

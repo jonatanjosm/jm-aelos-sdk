@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Callable, Iterable
 
 from .actions import get_action
 from .commands import SerialCommand, send_download_request, set_all_servos
@@ -58,6 +58,7 @@ class AelosRobot:
     timeout: float = 1.0
     write_timeout: float = 1.0
     auto_connect: bool = False
+    sleeper: Callable[[float], None] = time.sleep
 
     def __post_init__(self) -> None:
         self._serial = None
@@ -168,22 +169,79 @@ class AelosRobot:
 
         return self.run_routine(get_action(name))
 
-    def run_routine(self, routine: MotionRoutine) -> list[bytes]:
+    @staticmethod
+    def calculate_move_wait(
+        speed: int,
+        *,
+        distance: int,
+        timing_scale: float = 1.0,
+        min_wait: float = 0.08,
+        distance_factor: float = 0.025,
+    ) -> float:
+        if speed <= 0:
+            raise ValueError("speed must be greater than 0")
+        if distance < 0:
+            raise ValueError("distance cannot be negative")
+        if timing_scale <= 0:
+            raise ValueError("timing_scale must be greater than 0")
+        if min_wait < 0:
+            raise ValueError("min_wait cannot be negative")
+        return max(min_wait, distance * distance_factor / speed) * timing_scale
+
+    def run_routine(
+        self,
+        routine: MotionRoutine,
+        *,
+        timing_scale: float = 1.2,
+        min_wait: float = 0.08,
+        command_interval: float = 0.15,
+        final_read_delay: float = 1.0,
+    ) -> list[bytes]:
         """Stream a migrated motion routine as direct servo commands."""
 
-        responses: list[bytes] = []
+        frames_sent = 0
         speed = 15
+        previous_servos: list[int] | None = None
+        pending_distance = 0
+        has_pending_move = False
         for instruction in compile_routine(routine).instructions:
             if instruction.opcode == MotionOpcode.SPEED:
                 speed = instruction.data[1]
             elif instruction.opcode == MotionOpcode.MOVE:
-                responses.append(
-                    self.send_command(set_all_servos(list(instruction.data[2:]), speed), read_size=64)
+                servos = list(instruction.data[2:])
+                self.write_bytes(set_all_servos(servos, speed).payload)
+                frames_sent += 1
+                if command_interval > 0:
+                    self.sleeper(command_interval)
+                if previous_servos is not None:
+                    pending_distance = max(
+                        abs(current - previous)
+                        for current, previous in zip(servos, previous_servos)
+                    )
+                else:
+                    pending_distance = max(
+                        abs(current - 100)
+                        for current in servos
+                    )
+                previous_servos = servos
+                has_pending_move = True
+            elif instruction.opcode == MotionOpcode.WAIT and has_pending_move:
+                self.sleeper(
+                    self.calculate_move_wait(
+                        speed,
+                        distance=pending_distance,
+                        timing_scale=timing_scale,
+                        min_wait=min_wait,
+                    )
                 )
+                has_pending_move = False
             elif instruction.opcode == MotionOpcode.DELAY:
                 delay_ms = (instruction.data[1] << 8) + instruction.data[2]
-                time.sleep(delay_ms / 1000)
-        return responses
+                self.sleeper(delay_ms / 1000)
+        if final_read_delay > 0:
+            self.sleeper(final_read_delay)
+        final_response = self.read_available()
+        return [final_response] if frames_sent else []
 
     def download_routine(self, routine: MotionRoutine) -> list[bytes]:
         """Download a routine file using the Aelos app download flow."""
