@@ -192,12 +192,21 @@ class AelosRobot:
         self,
         routine: MotionRoutine,
         *,
-        timing_scale: float = 1.2,
-        min_wait: float = 0.08,
-        command_interval: float = 0.15,
-        final_read_delay: float = 1.0,
+        timing_scale: float | None = None,
+        min_wait: float | None = None,
+        command_interval: float | None = None,
+        final_read_delay: float | None = None,
     ) -> list[bytes]:
         """Stream a migrated motion routine as direct servo commands."""
+
+        timing_scale = routine.timing_scale if timing_scale is None else timing_scale
+        min_wait = routine.min_wait if min_wait is None else min_wait
+        command_interval = (
+            routine.command_interval if command_interval is None else command_interval
+        )
+        final_read_delay = (
+            routine.final_read_delay if final_read_delay is None else final_read_delay
+        )
 
         frames_sent = 0
         speed = 15

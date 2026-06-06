@@ -21,6 +21,10 @@ class MotionRoutine:
     name: str
     commands: tuple[str, ...]
     source: str = "Aelos Edu"
+    timing_scale: float = 1.2
+    min_wait: float = 0.08
+    command_interval: float = 0.15
+    final_read_delay: float = 1.0
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -30,10 +34,25 @@ class MotionRoutine:
 
     @classmethod
     def from_commands(
-        cls, name: str, commands: Iterable[str], source: str = "Aelos Edu"
+        cls,
+        name: str,
+        commands: Iterable[str],
+        source: str = "Aelos Edu",
+        timing_scale: float = 1.2,
+        min_wait: float = 0.08,
+        command_interval: float = 0.15,
+        final_read_delay: float = 1.0,
     ) -> "MotionRoutine":
         normalized = tuple(command.strip() for command in commands if command.strip())
-        return cls(name=name, commands=normalized, source=source)
+        return cls(
+            name=name,
+            commands=normalized,
+            source=source,
+            timing_scale=timing_scale,
+            min_wait=min_wait,
+            command_interval=command_interval,
+            final_read_delay=final_read_delay,
+        )
 
     def to_script(self) -> str:
         return "\n".join(self.commands)

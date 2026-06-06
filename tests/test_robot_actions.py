@@ -100,6 +100,10 @@ def test_action_rejects_unknown_routine() -> None:
         raise AssertionError("unknown action should fail")
 
 
+def test_push_up_action_is_registered() -> None:
+    assert jmaelossdk.get_action("Push-up").name == "Push-up"
+
+
 def test_run_routine_waits_after_move_until_motowait() -> None:
     sleeps: list[float] = []
     routine = MotionRoutine.from_commands(
