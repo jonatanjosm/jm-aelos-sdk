@@ -1,3 +1,5 @@
-"""Motion routines will live here once protocol execution is validated."""
+"""Migrated Aelos motion routines."""
 
-__all__: list[str] = []
+from .combat import KICK, kick
+
+__all__ = ["KICK", "kick"]

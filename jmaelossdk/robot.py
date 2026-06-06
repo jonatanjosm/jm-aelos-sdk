@@ -7,6 +7,7 @@ from typing import Iterable
 from .commands import SerialCommand
 from .discovery import find_default_port, list_serial_ports
 from .protocol import validate_byte_values
+from .routine import MotionRoutine
 from .types import SerialPortInfo
 
 
@@ -141,3 +142,16 @@ class AelosRobot:
             finally:
                 connection.timeout = previous_timeout
         return self.read(read_size)
+
+    def run_routine(self, routine: MotionRoutine) -> None:
+        """Run a migrated motion routine.
+
+        Routine migration starts by preserving the official command sequence.
+        Actual execution will be enabled after the motion compiler and download
+        packet protocol are validated against the robot.
+        """
+
+        raise NotImplementedError(
+            f"Routine execution is not wired yet. Routine {routine.name!r} "
+            "is migrated and available through routine.to_script()."
+        )
