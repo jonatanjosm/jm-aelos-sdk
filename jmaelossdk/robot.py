@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from .actions import get_action
-from .commands import SerialCommand
+from .commands import SerialCommand, send_download_request, set_all_servos
+from .compiler import compile_routine
 from .discovery import find_default_port, list_serial_ports
 from .packaging import build_routine_download_packets
-from .protocol import validate_byte_values
+from .protocol import MotionOpcode, validate_byte_values
 from .routine import MotionRoutine
 from .types import SerialPortInfo
 
@@ -168,10 +169,27 @@ class AelosRobot:
         return self.run_routine(get_action(name))
 
     def run_routine(self, routine: MotionRoutine) -> list[bytes]:
-        """Compile, package, and send a migrated motion routine."""
+        """Stream a migrated motion routine as direct servo commands."""
 
         responses: list[bytes] = []
+        speed = 15
+        for instruction in compile_routine(routine).instructions:
+            if instruction.opcode == MotionOpcode.SPEED:
+                speed = instruction.data[1]
+            elif instruction.opcode == MotionOpcode.MOVE:
+                responses.append(
+                    self.send_command(set_all_servos(list(instruction.data[2:]), speed), read_size=64)
+                )
+            elif instruction.opcode == MotionOpcode.DELAY:
+                delay_ms = (instruction.data[1] << 8) + instruction.data[2]
+                time.sleep(delay_ms / 1000)
+        return responses
+
+    def download_routine(self, routine: MotionRoutine) -> list[bytes]:
+        """Download a routine file using the Aelos app download flow."""
+
+        responses: list[bytes] = [self.send_command(send_download_request(), read_size=64)]
         for packet in build_routine_download_packets(routine):
             self.write_bytes(packet.payload)
-            responses.append(self.read_available())
+            responses.append(self.read(64))
         return responses
