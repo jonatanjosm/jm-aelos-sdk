@@ -4,8 +4,10 @@ import time
 from dataclasses import dataclass
 from typing import Iterable
 
+from .actions import get_action
 from .commands import SerialCommand
 from .discovery import find_default_port, list_serial_ports
+from .packaging import build_routine_download_packets
 from .protocol import validate_byte_values
 from .routine import MotionRoutine
 from .types import SerialPortInfo
@@ -21,6 +23,23 @@ def _import_serial():
             "`python3 -m pip install -e .`."
         ) from exc
     return serial
+
+
+def init(
+    port: str | None = None,
+    *,
+    auto_connect: bool = True,
+    baudrate: int = 115200,
+    timeout: float = 1.0,
+    write_timeout: float = 1.0,
+) -> "AelosRobot":
+    return AelosRobot(
+        port=port,
+        baudrate=baudrate,
+        timeout=timeout,
+        write_timeout=write_timeout,
+        auto_connect=auto_connect,
+    )
 
 
 @dataclass
@@ -143,15 +162,16 @@ class AelosRobot:
                 connection.timeout = previous_timeout
         return self.read(read_size)
 
-    def run_routine(self, routine: MotionRoutine) -> None:
-        """Run a migrated motion routine.
+    def action(self, name: str) -> list[bytes]:
+        """Run a named migrated action, similar to the official SDK API."""
 
-        Routine migration starts by preserving the official command sequence.
-        Actual execution will be enabled after the motion compiler and download
-        packet protocol are validated against the robot.
-        """
+        return self.run_routine(get_action(name))
 
-        raise NotImplementedError(
-            f"Routine execution is not wired yet. Routine {routine.name!r} "
-            "is migrated and available through routine.to_script()."
-        )
+    def run_routine(self, routine: MotionRoutine) -> list[bytes]:
+        """Compile, package, and send a migrated motion routine."""
+
+        responses: list[bytes] = []
+        for packet in build_routine_download_packets(routine):
+            self.write_bytes(packet.payload)
+            responses.append(self.read_available())
+        return responses
