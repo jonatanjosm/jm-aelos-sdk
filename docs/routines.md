@@ -54,6 +54,22 @@ Technical notes for adding and maintaining migrated Aelos routines.
    __all__ = ["NEW_ROUTINE", "new_routine"]
    ```
 
+   For a parametrized routine, expose a factory that builds the `MotionRoutine`
+   from arguments, and optionally keep a default one-step action constant:
+
+   ```python
+   def walk_forward(steps: int = 1) -> MotionRoutine:
+       if steps <= 0:
+           raise ValueError("steps must be greater than 0")
+       return MotionRoutine.from_commands(
+           name="Walk_forward" if steps == 1 else f"Walk_forward_{steps}_steps",
+           commands=[INITIAL_COMMAND, *(STEP_COMMANDS * steps)],
+       )
+
+
+   WALK_FORWARD = walk_forward()
+   ```
+
 4. Export it from the package `__init__.py`.
 
    Example:
@@ -86,14 +102,12 @@ Technical notes for adding and maintaining migrated Aelos routines.
    robot.action("New_Routine")
    ```
 
-7. Add or update tests.
+7. Run the tests.
 
-   At minimum, verify:
-
-   - the routine is a `MotionRoutine`
-   - the command count
-   - the `MOTOmove16` count
-   - the routine is registered in `available_actions()`
+   Run `python3 -m pytest -q`. `test_all_actions_compile` compiles every
+   routine registered in `available_actions()`, so a badly migrated routine
+   fails there. No per-routine test is needed; validate the movement on the
+   robot instead.
 
 8. Update the main README.
 

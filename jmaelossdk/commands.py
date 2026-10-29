@@ -52,6 +52,34 @@ def check_robot_type() -> SerialCommand:
     )
 
 
+def lock_servo(servo_id: int) -> SerialCommand:
+    if not 1 <= servo_id <= 16:
+        raise ValueError("servo_id must be between 1 and 16")
+    return SerialCommand(
+        name="lock_servo",
+        payload=command_payload(
+            [BasicSerialCommand.LOCK_SERVO, 0, 0, 0, 0, 1, 0, 0, servo_id]
+        ),
+        verifier=lambda response: len(response) >= 9
+        and response[0] == 255
+        and response[8] == BasicSerialCommand.LOCK_SERVO,
+    )
+
+
+def unlock_servo(servo_id: int) -> SerialCommand:
+    if not 1 <= servo_id <= 16:
+        raise ValueError("servo_id must be between 1 and 16")
+    return SerialCommand(
+        name="unlock_servo",
+        payload=command_payload(
+            [BasicSerialCommand.UNLOCK_SERVO, 0, 0, 0, 0, 1, 0, 0, servo_id]
+        ),
+        verifier=lambda response: len(response) >= 9
+        and response[0] == 255
+        and response[8] == BasicSerialCommand.UNLOCK_SERVO,
+    )
+
+
 def send_download_request() -> SerialCommand:
     return SerialCommand(
         name="send_download_request",

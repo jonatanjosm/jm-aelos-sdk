@@ -21,6 +21,7 @@ class BasicSerialCommand(IntEnum):
     CHECK_ROBOT_1S = 51
     CHECK_ROBOT_TYPE = 71
     GET_SERVOS_VALUE = 121
+    LOCK_SERVO = 121
     UNLOCK_SERVO = 120
     UPDATE_SERVO = 118
     GET_ALL_SERVOS = 167

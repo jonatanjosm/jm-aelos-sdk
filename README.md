@@ -98,7 +98,10 @@ Routines are grouped by package under `jmaelossdk.routines`.
 
 ### Walk
 
-- No migrated routines yet.
+- `Walk_forward`
+  - Import: `from jmaelossdk.routines.walk import WALK_FORWARD, walk_forward`
+  - Execute one step: `robot.action("Walk_forward")`
+  - Execute multiple steps: `robot.walk_forward(steps=3)`
 
 ## Technical routine docs
 

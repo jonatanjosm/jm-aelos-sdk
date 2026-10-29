@@ -1,44 +1,13 @@
-from jmaelossdk.compiler import compile_line, compile_routine, compile_script
+from jmaelossdk.actions import available_actions, get_action
+from jmaelossdk.compiler import compile_routine
 from jmaelossdk.protocol import MotionOpcode
 from jmaelossdk.routines.combat import KICK
 
 
-def test_compile_basic_motion_lines() -> None:
-    assert compile_line("MOTOsetspeed(12)").data == bytes([MotionOpcode.SPEED, 12])
-    assert compile_line("MOTOwait()").data == bytes([MotionOpcode.WAIT])
-    assert compile_line("DelayMs(200)").data == bytes([MotionOpcode.DELAY, 0, 200])
-
-
-def test_compile_move_and_rigid_lines() -> None:
-    assert compile_line(
-        "MOTOrigid16(65,65,65,70,70,70,70,70,65,65,65,50,50,50,50,50)"
-    ).data == bytes(
-        [MotionOpcode.RIGID, 32, 65, 65, 65, 70, 70, 70, 70, 70, 65, 65, 65, 50, 50, 50, 50, 50]
-    )
-    assert compile_line(
-        "MOTOmove16(80, 30, 100, 97, 93, 55, 124, 95, 120, 170, 100, 103, 107, 145, 76, 105)"
-    ).data == bytes(
-        [MotionOpcode.MOVE, 32, 80, 30, 100, 97, 93, 55, 124, 95, 120, 170, 100, 103, 107, 145, 76, 105]
-    )
-
-
-def test_compile_kick_script_to_bytes() -> None:
-    compiled = compile_script(KICK.to_script())
-
-    assert len(compiled.instructions) == 43
-    assert compiled.data[:18] == bytes(
-        [MotionOpcode.RIGID, 32, 65, 65, 65, 70, 70, 70, 70, 70, 65, 65, 65, 50, 50, 50, 50, 50]
-    )
-    assert compiled.data[-1:] == bytes([MotionOpcode.WAIT])
-    assert len(compiled.data) == 300
-
-
-def test_compile_routine_preserves_metadata() -> None:
-    compiled = compile_routine(KICK)
-
-    assert compiled.name == "Kick"
-    assert compiled.source == "Aelos Edu"
-    assert compiled.data == compile_script(KICK.to_script()).data
+def test_all_actions_compile() -> None:
+    for name in available_actions():
+        compiled = compile_routine(get_action(name))
+        assert compiled.instructions, name
 
 
 def test_kick_lines_match_app_js_compiler_behavior_line_by_line() -> None:

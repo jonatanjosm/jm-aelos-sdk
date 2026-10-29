@@ -5,12 +5,13 @@ from dataclasses import dataclass
 from typing import Callable, Iterable
 
 from .actions import get_action
-from .commands import SerialCommand, send_download_request, set_all_servos
+from .commands import SerialCommand, lock_servo, send_download_request, set_all_servos
 from .compiler import compile_routine
 from .discovery import find_default_port, list_serial_ports
 from .packaging import build_routine_download_packets
 from .protocol import MotionOpcode, validate_byte_values
 from .routine import MotionRoutine
+from .routines.walk import walk_forward
 from .types import SerialPortInfo
 
 
@@ -164,10 +165,21 @@ class AelosRobot:
                 connection.timeout = previous_timeout
         return self.read(read_size)
 
+    def lock_all_servos(self) -> None:
+        """Keep all servos energized at their current position."""
+
+        for servo_id in range(1, 17):
+            self.write_bytes(lock_servo(servo_id).payload)
+
     def action(self, name: str) -> list[bytes]:
         """Run a named migrated action, similar to the official SDK API."""
 
         return self.run_routine(get_action(name))
+
+    def walk_forward(self, steps: int = 1) -> list[bytes]:
+        """Walk forward a parametrized number of steps."""
+
+        return self.run_routine(walk_forward(steps=steps))
 
     @staticmethod
     def calculate_move_wait(
@@ -196,6 +208,7 @@ class AelosRobot:
         min_wait: float | None = None,
         command_interval: float | None = None,
         final_read_delay: float | None = None,
+        hold_servos: bool = True,
     ) -> list[bytes]:
         """Stream a migrated motion routine as direct servo commands."""
 
@@ -249,6 +262,8 @@ class AelosRobot:
                 self.sleeper(delay_ms / 1000)
         if final_read_delay > 0:
             self.sleeper(final_read_delay)
+        if frames_sent and hold_servos:
+            self.lock_all_servos()
         final_response = self.read_available()
         return [final_response] if frames_sent else []
 
