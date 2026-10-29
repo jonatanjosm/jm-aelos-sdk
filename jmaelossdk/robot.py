@@ -9,6 +9,7 @@ from .commands import (
     SERVO_VALUE_RESPONSE_SIZE,
     SerialCommand,
     lock_servo,
+    online_mode,
     parse_servo_value,
     send_download_request,
     set_all_servos,
@@ -108,6 +109,16 @@ class AelosRobot:
             write_timeout=self.write_timeout,
         )
         time.sleep(0.2)
+        # The robot ignores lock/query commands until it is put in online
+        # mode, as the Aelos Edu app does on connect (measured on the robot).
+        self.enter_online_mode()
+
+    def enter_online_mode(self) -> bool:
+        """Put the robot controller in online mode. True if it confirmed."""
+
+        self._require_connection().reset_input_buffer()
+        command = online_mode()
+        return command.is_success(self.send_command(command, read_size=9))
 
     def close(self) -> None:
         if self._serial is not None:
