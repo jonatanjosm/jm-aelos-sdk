@@ -20,6 +20,8 @@ class BasicSerialCommand(IntEnum):
     ONLINE_MODE = 131
     CHECK_ROBOT_1S = 51
     CHECK_ROBOT_TYPE = 71
+    # Aelos Edu sends the same packet for both: "lock this servo and return its
+    # position". LOCK_SERVO is therefore an alias of GET_SERVOS_VALUE.
     GET_SERVOS_VALUE = 121
     LOCK_SERVO = 121
     UNLOCK_SERVO = 120
@@ -29,6 +31,11 @@ class BasicSerialCommand(IntEnum):
     SEND_DOWNLOAD_REQUEST = 132
     DOWNLOAD_FILE = 112
     HIGH_PRECISION_PREVIEW = 35
+
+
+# First byte of the robot's answer to a lock/get-value command, and of an error.
+SERVO_VALUE_RESPONSE = 119
+SERIAL_ERROR_RESPONSE = 254
 
 
 def uint16_be(value: int) -> list[int]:

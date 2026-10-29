@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from .protocol import BasicSerialCommand, validate_byte_values
+from .protocol import SERVO_VALUE_RESPONSE, BasicSerialCommand, validate_byte_values
 
 
 SuccessVerifier = Callable[[bytes], bool]
@@ -52,7 +52,22 @@ def check_robot_type() -> SerialCommand:
     )
 
 
+# Provisional: the position is read from byte 9 of the answer (as in Aelos Edu).
+# Confirm the real length on the robot with aelos-test/probe_servo.py.
+SERVO_VALUE_RESPONSE_SIZE = 10
+LOCK_SERVO_TIMEOUT = 0.3
+
+
+def _is_servo_value_response(response: bytes) -> bool:
+    return (
+        len(response) >= SERVO_VALUE_RESPONSE_SIZE
+        and response[0] == SERVO_VALUE_RESPONSE
+    )
+
+
 def lock_servo(servo_id: int) -> SerialCommand:
+    """Lock a servo (energize it) and ask for its current position."""
+
     if not 1 <= servo_id <= 16:
         raise ValueError("servo_id must be between 1 and 16")
     return SerialCommand(
@@ -60,10 +75,17 @@ def lock_servo(servo_id: int) -> SerialCommand:
         payload=command_payload(
             [BasicSerialCommand.LOCK_SERVO, 0, 0, 0, 0, 1, 0, 0, servo_id]
         ),
-        verifier=lambda response: len(response) >= 9
-        and response[0] == 255
-        and response[8] == BasicSerialCommand.LOCK_SERVO,
+        verifier=_is_servo_value_response,
+        timeout=LOCK_SERVO_TIMEOUT,
     )
+
+
+def parse_servo_value(response: bytes) -> int | None:
+    """Servo position from a lock_servo answer, or None if it is not valid."""
+
+    if not _is_servo_value_response(response):
+        return None
+    return response[9]
 
 
 def unlock_servo(servo_id: int) -> SerialCommand:

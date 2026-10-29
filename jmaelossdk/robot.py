@@ -5,7 +5,15 @@ from dataclasses import dataclass
 from typing import Callable, Iterable
 
 from .actions import get_action
-from .commands import SerialCommand, lock_servo, send_download_request, set_all_servos
+from .commands import (
+    SERVO_VALUE_RESPONSE_SIZE,
+    SerialCommand,
+    lock_servo,
+    parse_servo_value,
+    send_download_request,
+    set_all_servos,
+    unlock_servo,
+)
 from .compiler import compile_routine
 from .discovery import find_default_port, list_serial_ports
 from .packaging import build_routine_download_packets
@@ -165,11 +173,24 @@ class AelosRobot:
                 connection.timeout = previous_timeout
         return self.read(read_size)
 
-    def lock_all_servos(self) -> None:
-        """Keep all servos energized at their current position."""
+    def lock_servo(self, servo_id: int) -> int | None:
+        """Energize one servo and return its position (None if no valid answer)."""
 
-        for servo_id in range(1, 17):
-            self.write_bytes(lock_servo(servo_id).payload)
+        response = self.send_command(
+            lock_servo(servo_id), read_size=SERVO_VALUE_RESPONSE_SIZE
+        )
+        return parse_servo_value(response)
+
+    def unlock_servo(self, servo_id: int) -> bool:
+        """Release one servo so it can be moved by hand. True if the robot confirmed."""
+
+        command = unlock_servo(servo_id)
+        return command.is_success(self.send_command(command, read_size=9))
+
+    def lock_all_servos(self) -> dict[int, int | None]:
+        """Energize all 16 servos; a servo that does not answer does not stop the rest."""
+
+        return {servo_id: self.lock_servo(servo_id) for servo_id in range(1, 17)}
 
     def action(
         self,
@@ -311,9 +332,10 @@ class AelosRobot:
                 self.sleeper(delay_ms / 1000)
         if final_read_delay > 0:
             self.sleeper(final_read_delay)
+        # Read the movement ACKs first so the lock answers don't get mixed in.
+        final_response = self.read_available()
         if frames_sent and hold_servos:
             self.lock_all_servos()
-        final_response = self.read_available()
         return [final_response] if frames_sent else []
 
     def download_routine(self, routine: MotionRoutine) -> list[bytes]:
