@@ -19,6 +19,9 @@ class FakeSerial:
         self.read_calls += 1
         return b""
 
+    def reset_input_buffer(self) -> None:
+        pass
+
     def close(self) -> None:
         self.is_open = False
 

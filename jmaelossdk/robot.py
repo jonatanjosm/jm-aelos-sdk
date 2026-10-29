@@ -171,15 +171,50 @@ class AelosRobot:
         for servo_id in range(1, 17):
             self.write_bytes(lock_servo(servo_id).payload)
 
-    def action(self, name: str) -> list[bytes]:
-        """Run a named migrated action, similar to the official SDK API."""
+    def action(
+        self,
+        name: str,
+        *,
+        timing_scale: float | None = None,
+        min_wait: float | None = None,
+        command_interval: float | None = None,
+        final_read_delay: float | None = None,
+        hold_servos: bool = True,
+    ) -> list[bytes]:
+        """Run a named migrated action, similar to the official SDK API.
 
-        return self.run_routine(get_action(name))
+        Timing arguments override the routine's own defaults for this call.
+        """
 
-    def walk_forward(self, steps: int = 1) -> list[bytes]:
+        return self.run_routine(
+            get_action(name),
+            timing_scale=timing_scale,
+            min_wait=min_wait,
+            command_interval=command_interval,
+            final_read_delay=final_read_delay,
+            hold_servos=hold_servos,
+        )
+
+    def walk_forward(
+        self,
+        steps: int = 1,
+        *,
+        timing_scale: float | None = None,
+        min_wait: float | None = None,
+        command_interval: float | None = None,
+        final_read_delay: float | None = None,
+        hold_servos: bool = True,
+    ) -> list[bytes]:
         """Walk forward a parametrized number of steps."""
 
-        return self.run_routine(walk_forward(steps=steps))
+        return self.run_routine(
+            walk_forward(steps=steps),
+            timing_scale=timing_scale,
+            min_wait=min_wait,
+            command_interval=command_interval,
+            final_read_delay=final_read_delay,
+            hold_servos=hold_servos,
+        )
 
     @staticmethod
     def calculate_move_wait(
@@ -220,6 +255,20 @@ class AelosRobot:
         final_read_delay = (
             routine.final_read_delay if final_read_delay is None else final_read_delay
         )
+
+        # Validate before sending anything: a bad value must not leave the
+        # robot halfway through a posture.
+        if timing_scale <= 0:
+            raise ValueError("timing_scale must be greater than 0")
+        if min_wait < 0:
+            raise ValueError("min_wait cannot be negative")
+        if command_interval < 0:
+            raise ValueError("command_interval cannot be negative")
+        if final_read_delay < 0:
+            raise ValueError("final_read_delay cannot be negative")
+
+        # Drop leftovers from a previous run so they don't count as ACKs.
+        self._require_connection().reset_input_buffer()
 
         frames_sent = 0
         speed = 15
