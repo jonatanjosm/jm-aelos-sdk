@@ -211,7 +211,7 @@ class AelosRobot:
         min_wait: float | None = None,
         command_interval: float | None = None,
         final_read_delay: float | None = None,
-        hold_servos: bool = True,
+        hold_servos: bool = False,
     ) -> list[bytes]:
         """Run a named migrated action, similar to the official SDK API.
 
@@ -235,7 +235,7 @@ class AelosRobot:
         min_wait: float | None = None,
         command_interval: float | None = None,
         final_read_delay: float | None = None,
-        hold_servos: bool = True,
+        hold_servos: bool = False,
     ) -> list[bytes]:
         """Walk forward a parametrized number of steps."""
 
@@ -275,9 +275,13 @@ class AelosRobot:
         min_wait: float | None = None,
         command_interval: float | None = None,
         final_read_delay: float | None = None,
-        hold_servos: bool = True,
+        hold_servos: bool = False,
     ) -> list[bytes]:
-        """Stream a migrated motion routine as direct servo commands."""
+        """Stream a migrated motion routine as direct servo commands.
+
+        hold_servos: lock all servos at the end. Off by default because
+        SET_ALL_SERVOS already leaves the legs rigid (measured on the robot).
+        """
 
         timing_scale = routine.timing_scale if timing_scale is None else timing_scale
         min_wait = routine.min_wait if min_wait is None else min_wait

@@ -34,7 +34,7 @@ def test_action_streams_named_routine_servo_moves() -> None:
     responses = robot.action("Kick")
 
     assert responses == [b""]
-    assert len(fake_serial.writes) == 29
+    assert len(fake_serial.writes) == 13
     assert fake_serial.writes[0] == bytes(
         [
             BasicSerialCommand.SET_ALL_SERVOS,
@@ -64,7 +64,3 @@ def test_action_streams_named_routine_servo_moves() -> None:
             12,
         ]
     )
-    assert fake_serial.writes[-1] == bytes(
-        [BasicSerialCommand.LOCK_SERVO, 0, 0, 0, 0, 1, 0, 0, 16]
-    )
-

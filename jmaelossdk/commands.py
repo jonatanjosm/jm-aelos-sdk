@@ -52,8 +52,7 @@ def check_robot_type() -> SerialCommand:
     )
 
 
-# Provisional: the position is read from byte 9 of the answer (as in Aelos Edu).
-# Confirm the real length on the robot with aelos-test/probe_servo.py.
+# The answer is 10 bytes; the servo position is byte 9 (measured on the robot).
 SERVO_VALUE_RESPONSE_SIZE = 10
 LOCK_SERVO_TIMEOUT = 0.3
 
