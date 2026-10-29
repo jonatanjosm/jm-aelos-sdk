@@ -193,7 +193,10 @@ class AelosRobot:
         return parse_servo_value(response)
 
     def unlock_servo(self, servo_id: int) -> bool:
-        """Release one servo so it can be moved by hand. True if the robot confirmed."""
+        """Ask the robot to release one servo. True if the robot confirmed.
+
+        Untested effect: on servo 1 the robot confirmed but the servo stayed rigid.
+        """
 
         command = unlock_servo(servo_id)
         return command.is_success(self.send_command(command, read_size=9))
